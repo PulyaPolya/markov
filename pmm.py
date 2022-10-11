@@ -1,12 +1,5 @@
-#
-#
 import math
 
-import math
-observation = [1,3,2,1,3]
-A = [[0.2, 0.3, 0.5], [0.2, 0.2, 0.6], [0, 0.2, 0.8]]
-B = [[0.7, 0.2, 0.1], [0.3, 0.4, 0.3], [0, 0.1, 0.9]]
-mu = [0.05, 0.2, 0.75]
 alphabet  ='абвгґдеєжзиіїйклмнопрстуфхцчшщьюя '
 alp_dict = {}
 for i in range(len(alphabet)):
@@ -43,7 +36,7 @@ def alpha_pass_tr(pi, B, observation, T, A, N):
     c0 = 0
     #index = alphabet.index(observation[0])
     for i in range(N):
-        alphai = pi[i]*B[i][observation[0]-1]
+        alphai = pi[i]*B[i][observation[0]]
         alpha0.append(alphai)
         c0+= alphai
     # for i in range(len(alpha0)):
@@ -58,7 +51,7 @@ def alpha_pass_tr(pi, B, observation, T, A, N):
                 alph =  alphas[t-1][j]*A[j][i]
                 alphati += alph
             #index = alphabet.index(observation[t])
-            alphati *= B[i][observation[t]-1]
+            alphati *= B[i][observation[t]]
             ct += alphati
             alphat.append(alphati)
         alphas.append(alphat)
@@ -68,14 +61,17 @@ def alpha_pass_tr(pi, B, observation, T, A, N):
 def alpha_pass(pi, B, observation, T, A, N):
     alphas= []
     alphas_0 = []
+    c_arr = []
     c0 = 0
     index = alp_dict[observation[0]]
     for i in range(N):
         alpha_0i = pi[i] * B[i][index]
         alphas_0.append(alpha_0i)
         c0+= alpha_0i
+    c0 = 1/c0
+    c_arr.append(c0 )
     for i in range(N):
-        alphas_0[i] /= c0
+        alphas_0[i] *= c0
     alphas.append(alphas_0)
     for t in range(1, T):
         c_t = 0
@@ -85,16 +81,17 @@ def alpha_pass(pi, B, observation, T, A, N):
             for j in range(N):
                 alph =  alphas[t-1][j]*A[j][i]
                 alpha_ti += alph
-            index = alp_dict[observation[0]]
+            index = alp_dict[observation[t]]
             alpha_ti *= B[i][index]
             c_t += alpha_ti
             alphas_t.append(alpha_ti)
         alphas.append(alphas_t)
         for i in range(N):
             alphas_t[i] /= c_t
-    return alphas
+        c_arr.append(1/c_t)
+    return alphas, c_arr
 
-def betta_pass(cT_1, T, N, A, B, observation):
+def betta_pass_tr(T, N, A, B, observation):
     bettas = [[]]*(T)
     bettas_T  = []
     for i in range(N):
@@ -106,42 +103,64 @@ def betta_pass(cT_1, T, N, A, B, observation):
         for i in range(N):
             bettai = 0
             for j in range(N):
-                b_temp =A[i][j]*B[j][observation[t+1]-1]*bettas[t+1][j]
+                b_temp =A[i][j]*B[j][observation[t+1]]*bettas[t+1][j]
                 bettai += b_temp
             bettat.append(bettai)
         bettas[t] = bettat
     return bettas
-def get_gammas(T, alphas, bettas):
+
+def betta_pass(c_arr, T, N, A, B, observation):
+    bettas = [[]]*(T)
+    bettas_T  = []
+    for i in range(N):
+        betta_T_1 = c_arr[T-1]
+        bettas_T.append(betta_T_1)
+    bettas[-1] = bettas_T
+    for t in range (T-2, -1, -1):
+        bettas_t = []
+        index = alp_dict[observation[t+1]]
+        for i in range(N):
+            betta_ti = 0
+            for j in range(N):
+                b_temp =A[i][j]*B[j][index]*bettas[t+1][j]
+                betta_ti += b_temp
+            betta_ti *= c_arr[t]
+            bettas_t.append(betta_ti)
+        bettas[t] = bettas_t
+    return bettas
+
+def get_gammas(T,A,B, alphas, bettas, observation):
     gammas = []
-    gammas_pairs = []
+    di_gammas = []
     for t in range(T-1):
-        gammas_pairs_t = [[0] * N] * N
+        di_gammas_t = [[0] * N] * N
         denom = 0
+        index = alp_dict[observation[t+1]]
         for i in range(N):
             for j in range(N):
-                d_temp = alphas[t][i]*A[i][j]*B[j][observation[t+1]-1]*bettas[t+1][j]
+                d_temp = alphas[t][i]*A[i][j]*B[j][index]*bettas[t+1][j]
                 denom += d_temp
         gammas_ti = []
         for i in range(N):
             gamma_ti = 0
             for j in range(N):
-                gamma_ij = (alphas[t][i]*A[i][j]*B[j][observation[t+1]-1]*bettas[t+1][j]) / denom
-                gammas_pairs_t[i][j] =gamma_ij
+                gamma_ij = (alphas[t][i]*A[i][j]*B[j][index]*bettas[t+1][j]) / denom
+                di_gammas_t[i][j] =gamma_ij
                 gamma_ti += gamma_ij
             gammas_ti.append(gamma_ti)
         gammas.append(gammas_ti)
-        gammas_pairs.append(gammas_pairs_t)
+        di_gammas.append(di_gammas_t)
     denom = 0
-    gammasT_1i = []
+    gammasT_1 = []
     for i in range(N):
         denom += alphas[T-1][i]
     for i in range(N):
-        gamma_T_1 = alphas[T-1][i] / denom
-        gammasT_1i.append(gamma_T_1)
-    gammas.append(gammasT_1i)
-    return gammas, gammas_pairs
+        gamma_T_1_i = alphas[T-1][i] / denom
+        gammasT_1.append(gamma_T_1_i)
+    gammas.append(gammasT_1)
+    return gammas, di_gammas
 
-def reestimate(gammas,gammas_pairs, N, M, A, B, T):
+def reestimate(gammas, di_gammas, N, M, A, B, T, observation):
     pis = []
     for i in range (N):
         pis.append(gammas[0][i])
@@ -150,7 +169,7 @@ def reestimate(gammas,gammas_pairs, N, M, A, B, T):
             numer = 0
             denom = 0
             for t in range(T-1):
-                numer += gammas_pairs[t][i][j]
+                numer += di_gammas[t][i][j]
                 denom += gammas[t][i]
             A[i][j] = numer/ denom
     for i in range(N):
@@ -158,27 +177,29 @@ def reestimate(gammas,gammas_pairs, N, M, A, B, T):
             numer =0
             denom =0
             for t in range(T):
-                if observation[t]-1 == j:
+                if alp_dict[observation[t]] == j:
                     numer += gammas[t][i]
                 denom += gammas[t][i]
             B[i][j] =  numer/denom
     return pis, A, B
 
-def compute_probs(T, c):
+def compute_probs(T, c_arr):
     logProb = 0
     for i in range(T):
-        logProb += math.log2(c[i])
+        logProb += math.log2(c_arr[i])
     logProb = - logProb
     return logProb
 
-def viterbi(A, B, pi, observation, N, T):
+def viterbi1(A, B, pi, observation, N, T):
     deltas = []
     phis = []
     deltas_0 = []
     for i in range(N):
         index = alp_dict[observation[0]]
-        delta_0i = math.log2(pi[i]*B[i][index])
+        delta_0i = math.log(pi[i]*B[i][index])
         deltas_0.append(delta_0i)
+    deltas.append(deltas_0)
+    phis.append([0,0])
     for t in range(1, T):
         deltas_t = []
         phis_t = []
@@ -186,7 +207,8 @@ def viterbi(A, B, pi, observation, N, T):
         for i in range(N):
             delta_t_i_arr = []
             for j in range(N):
-                delta_t_i_j = deltas[t-1][j] + math.log2(A[i][j]) + math.log(B[i][index])
+                #delta_t_i_j = deltas[t-1][j] + math.log(A[i][j]) + math.log(B[i][index])
+                delta_t_i_j = deltas[t - 1][j] *A[i][j]**B[i][index]
                 delta_t_i_arr.append(delta_t_i_j)
             delta_t_i = max(delta_t_i_arr)
             phi_t_i = delta_t_i_arr.index(delta_t_i)
@@ -194,19 +216,60 @@ def viterbi(A, B, pi, observation, N, T):
             phis_t.append(phi_t_i)
         deltas.append(deltas_t)
         phis.append(phis_t)
+    arr_x = [0]*T
+    delta_star = max(deltas[T-1])
+    phi_star = deltas[T-1].index(delta_star)
+    arr_x[T-1] = phi_star
+    for t in range(T-2, -1, -1):
+        x_t_star = phis[t+1][arr_x[t+1]]
+        arr_x[t] = x_t_star
+    return arr_x
 
-
+def viterbi_edit(A, B, pi, v, N, T):
+    deltas = []
+    phis = []
+    deltas_0 = []
+    for i in range(N):
+        #index = alp_dict[v[0]]
+        delta_0i = pi[i]*B[i][v[0]]
+        deltas_0.append(delta_0i)
+    deltas.append(deltas_0)
+    phis.append([0,0, 0])
+    for t in range(1, T):
+        deltas_t = []
+        phis_t = []
+        #index = alp_dict[v[t]]
+        for i in range(N):
+            delta_t_i_arr = []
+            for j in range(N):
+                #delta_t_i_j = deltas[t-1][j] + math.log(A[i][j]) + math.log(B[i][index])
+                delta_t_i_j = deltas[t - 1][j] *A[j][i]
+                delta_t_i_arr.append(delta_t_i_j)
+            delta_t_i = max(delta_t_i_arr)
+            phi_t_i = delta_t_i_arr.index(delta_t_i)
+            deltas_t.append(delta_t_i*B[i][v[t]])
+            phis_t.append(phi_t_i)
+        deltas.append(deltas_t)
+        phis.append(phis_t)
+    arr_x = [0]*T
+    delta_star = max(deltas[T-1])
+    phi_star = deltas[T-1].index(delta_star)
+    arr_x[T-1] = phi_star
+    for t in range(T-2, -1, -1):
+        x_t_star = phis[t+1][arr_x[t+1]]
+        arr_x[t] = x_t_star
+    return arr_x
 
 
 def learn():
     eps = 0.01
     N = 2
     M = 34
-    f =open( 'text.txt')
+    f =open( 'text.txt', encoding='UTF')
     observation = list(f)
-    observation = [x for x in observation[0]]
+    observation = [x for x in observation[0]][:5000]
     T = len(observation)
-    A = [[1 / N + eps, 1 / N - eps], [1 / N + eps, 1 / N - eps]]
+    A = [[1 / N + eps, 1 / N - eps], [1 / N - eps, 1 / N + eps]]
     pi = [1/N + eps, 1/N -eps]
     B = []
     alphabet = 'абвгґдеєжзиіїйклмнопрстуфхцчшщьюя '
@@ -217,11 +280,77 @@ def learn():
             b.append(1/M - eps)
         b.append(1/M + (M-1)*eps)
         B.append(b)
-    minIters = 100
+    minIters = 10
     e = 0.01
     iters= 0
     oldLogProb = -100000
+    for i in range(minIters):
+        alphas, c_arr = alpha_pass(pi, B, observation, T, A, N)
+        bettas = betta_pass(c_arr, T, N, A, B, observation)
+        gammas, di_gammas = get_gammas(T,A,B, alphas, bettas, observation)
+        pi, A, B = reestimate(gammas, di_gammas, N, M, A, B, T, observation)
+    v = []
+    print(B)
+    for i in observation:
+        v.append(alp_dict[i])
+    v = np.array(v)
+    arr_x= viterbi1(A, B, pi, observation, N, T)
+    return pi, A, B, arr_x
 
-#alpha_pass(mu, B, observation.copy(), 5, A,N)
+
+def viterbi(y, A, B, Pi=None):
+
+    K = A.shape[0]
+    # Initialize the priors with default (uniform dist) if not given by caller
+    Pi = Pi if Pi is not None else np.full(K, 1 / K)
+    T = len(y)
+    T1 = np.empty((K, T), 'd')
+    T2 = np.empty((K, T), 'B')
+
+    # Initilaize the tracking tables from first observation
+    T1[:, 0] = Pi * B[:, y[0]]
+    T2[:, 0] = 0
+
+    # Iterate throught the observations updating the tracking tables
+    for i in range(1, T):
+        T1[:, i] = np.max(T1[:, i - 1] * A.T * B[np.newaxis, :, y[i]].T, 1)
+        T2[:, i] = np.argmax(T1[:, i - 1] * A.T, 1)
+
+    # Build the output, optimal model trajectory
+    x = np.empty(T, 'B')
+    x[-1] = np.argmax(T1[:, T - 1])
+    for i in reversed(range(1, T)):
+        x[i - 1] = T2[x[i], i]
+
+    return x, T1, T2
+
+# observation = [1,3,2,1,3]
+# classes = [1,2,3]
+# v = []
+# for i in observation:
+#     v.append(classes.index(i))
+# A = [[0.2, 0.3, 0.5], [0.2, 0.2, 0.6], [0, 0.2, 0.8]]
+# B = [[0.7, 0.2, 0.1], [0.3, 0.4, 0.3], [0, 0.1, 0.9]]
+# mu = [0.05, 0.2, 0.75]
+# #alphas= alpha_pass_tr(mu, B, v.copy(), 5, A,3)
+# viterbi_edit(A, B,mu, v.copy(), 3, 5)
+# bettas = betta_pass_tr(5, 3, A, B, v.copy())
+# print(bettas)
 # betta_pass
-learn()
+# pi, A, B, arr_x = learn()
+# print(A)
+# print(B)
+# f = open('text.txt', encoding='UTF')
+# observation = list(f)
+# observation = [x for x in observation[0]][:5000]
+# # print(arr_x)
+# group1 = []
+# group2 = []
+# for i in range(len(arr_x)):
+#     if arr_x[i] == 0 and observation[i] not in group1 and observation[i] not in group2:
+#         group1.append(observation[i])
+#     elif  arr_x[i] == 1 and observation[i] not in group2 and observation[i] not in group1:
+#         group2.append(observation[i])
+# print(group1)
+# print(group2)
+
