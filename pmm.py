@@ -270,7 +270,7 @@ def learn(N, M,v, A , B, pi, minIters, c):
 f =open( 'text2', encoding='UTF-8')
 observation = list(f)
 N = 2
-observation = [x for x in observation[0]][:300]
+observation = [x for x in observation[0]][:200]
 T = len(observation)
 v = []
 for i in observation:
@@ -304,7 +304,7 @@ eps1 = 0.01
 #     B.append(b)
 b = (1,)*M
 #B = np.random.dirichlet(b,2).tolist()
-pi, A, B, arr_x = learn(N, M,v, A , B, pi, 10, c = True)
+pi, A, B, arr_x = learn(N, M,v, A , B, pi, 100, c = True)
 probs = {}
 for i in alphabet:
     probs[i] = [0,0]
