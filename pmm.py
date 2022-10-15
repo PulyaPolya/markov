@@ -31,45 +31,15 @@ def alpha_pass_tr(pi, B, observation, T, A, N, c):
             alphati *= B[i][observation[t]]
             ct += alphati
             alphat.append(alphati)
-        alphas.append(alphat)
+
         c_t = 1 / ct
         c_arr.append(c_t)
         if c:
             for i in range(N):
                 alphat[i] *= c_t
+        alphas.append(alphat.copy())
     return alphas, c_arr
-def alpha_pass(pi, B, observation, T, A, N):
-    alphas= []
-    alphas_0 = []
-    c_arr = []
-    c0 = 0
-    index = alp_dict[observation[0]]
-    for i in range(N):
-        alpha_0i = pi[i] * B[i][index]
-        alphas_0.append(alpha_0i)
-        c0+= alpha_0i
-    c0 = 1/c0
-    c_arr.append(c0 )
-    for i in range(N):
-        alphas_0[i] *= c0
-    alphas.append(alphas_0)
-    for t in range(1, T):
-        c_t = 0
-        alphas_t = []
-        for i in range(N):
-            alpha_ti = 0
-            for j in range(N):
-                alph =  alphas[t-1][j]*A[j][i]
-                alpha_ti += alph
-            index = alp_dict[observation[t]]
-            alpha_ti *= B[i][index]
-            c_t += alpha_ti
-            alphas_t.append(alpha_ti)
-        alphas.append(alphas_t)
-        for i in range(N):
-            alphas_t[i] /= c_t
-        c_arr.append(1/c_t)
-    return alphas, c_arr
+
 
 def betta_pass_tr(c_arr, T, N, A, B, observation, c):
     bettas = [[]]*(T)
@@ -92,28 +62,9 @@ def betta_pass_tr(c_arr, T, N, A, B, observation, c):
                 bettat.append(bettai*c_arr[t])
             else:
                 bettat.append(bettai)
-        bettas[t] = bettat
+        bettas[t] = bettat.copy()
     return bettas
 
-def betta_pass(c_arr, T, N, A, B, observation):
-    bettas = [[]]*(T)
-    bettas_T  = []
-    for i in range(N):
-        betta_T_1 = c_arr[T-1]
-        bettas_T.append(betta_T_1)
-    bettas[-1] = bettas_T
-    for t in range (T-2, -1, -1):
-        bettas_t = []
-        index = alp_dict[observation[t+1]]
-        for i in range(N):
-            betta_ti = 0
-            for j in range(N):
-                b_temp =A[i][j]*B[j][index]*bettas[t+1][j]
-                betta_ti += b_temp
-            betta_ti *= c_arr[t]
-            bettas_t.append(betta_ti)
-        bettas[t] = bettas_t
-    return bettas
 
 def get_gammas(T, A, B, alphas, bettas, v, N):
     gammas = []
@@ -137,8 +88,8 @@ def get_gammas(T, A, B, alphas, bettas, v, N):
                 di_gammas_t[i][j] =gamma_ij
                 gamma_ti += gamma_ij
             gammas_ti.append(gamma_ti)
-        gammas.append(gammas_ti)
-        di_gammas.append(di_gammas_t)
+        gammas.append(gammas_ti.copy())
+        di_gammas.append(di_gammas_t.copy())
     denom = 0
     gammasT_1 = []
     for i in range(N):
@@ -146,7 +97,7 @@ def get_gammas(T, A, B, alphas, bettas, v, N):
     for i in range(N):
         gamma_T_1_i = alphas[T-1][i] / denom
         gammasT_1.append(gamma_T_1_i)
-    gammas.append(gammasT_1)
+    gammas.append(gammasT_1.copy())
     return gammas, di_gammas
 
 def reestimate(gammas, di_gammas, N, M, A, B, T, v):
@@ -243,7 +194,7 @@ def viterbi_st(A, pi, B, v):
 
 def learn(N, M,v, A , B, pi, minIters, c):
     T = len(v)
-    oldLogProb = -100000
+    #oldLogProb = -100000
     for i in range(minIters):
         alphas, c_arr = alpha_pass_tr(pi, B, v, T, A, N, c)
         bettas = betta_pass_tr(c_arr, T, N, A, B, v, c)
@@ -283,8 +234,8 @@ A = [[1 / N - eps, 1 / N + eps], [1 / N + eps, 1 / N - eps]]
 # A = [[0.5, 0.5], [0.5, 0.5]]
 # pi = [0.5, 0.5]
 M = len(alphabet)
-#eps1 = 0.1
-pi = [1/N - eps, 1/N +eps]
+eps1 = eps
+pi = [1/N - eps1, 1/N +eps1]
 B = []
 for i in range(N):
     b = []
@@ -304,7 +255,7 @@ eps1 = 0.01
 #     B.append(b)
 b = (1,)*M
 #B = np.random.dirichlet(b,2).tolist()
-pi, A, B, arr_x = learn(N, M,v, A , B, pi, 100, c = True)
+pi, A, B, arr_x = learn(N, M,v, A , B, pi, 10, c = True)
 probs = {}
 for i in alphabet:
     probs[i] = [0,0]
@@ -313,14 +264,17 @@ for j in range(len(observation)):
 print(probs)
 group1 = []
 group2 = []
+group3 = []
 for i in probs:
     if probs[i][0] > probs[i][1]:
         group1.append(i)
-    else:
+    elif probs[i][0] == probs[i][1]:
         group2.append(i)
+    else:
+        group3.append(i)
 print(group1)
 print(group2)
-
+print(group3)
 
 # group1 = []
 # group2 = []
@@ -348,4 +302,4 @@ print(pi)
 print(A)
 print(B)
 
-print(list(arr_x))
+# print(list(arr_x))
