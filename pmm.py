@@ -53,15 +53,19 @@ def betta_pass_tr(c_arr, T, N, A, B, observation, c):
     bettas[-1] = bettas_T
     for t in range (T-2, -1, -1):
         bettat = []
+        sum = 0
         for i in range(N):
             bettai = 0
             for j in range(N):
                 b_temp =A[i][j]*B[j][observation[t+1]]*bettas[t+1][j]
                 bettai += b_temp
+            sum+= bettai
             if c:
-                bettat.append(bettai*c_arr[t])
+                bettat.append(bettai)
             else:
                 bettat.append(bettai)
+        for i in range(N):
+            bettat[i] /= sum
         bettas[t] = bettat.copy()
     return bettas
 
@@ -219,48 +223,81 @@ def learn(N, M,v, A , B, pi, minIters, c):
 
 
 f =open( 'text2', encoding='UTF-8')
-observation = list(f)
+observation2 = list(f)
 N = 2
-observation = [x for x in observation[0]][:200]
-T = len(observation)
-v = []
-for i in observation:
-    v.append(alp_dict[i])
-eps= 0.15
-A = [[1 / N - eps, 1 / N + eps], [1 / N + eps, 1 / N - eps]]
-# A = np.random.dirichlet((3,3), 2).tolist()
-# pi = np.random.dirichlet((2,2), 1).tolist()
-
-# A = [[0.5, 0.5], [0.5, 0.5]]
-# pi = [0.5, 0.5]
-M = len(alphabet)
-eps1 = eps
-pi = [1/N - eps1, 1/N +eps1]
-B = []
-for i in range(N):
-    b = []
-    for i in range(M):
-        b.append(1/M)
-    B.append(b)
-alphabet = 'абвгґдеєжзиіїйклмнопрстуфхцчшщьюя '
-alphabet = [x for x in alphabet]
-
-eps1 = 0.01
-# for i in range(N):
-#     b = []
-#     b = np.random.dirichlet((3, 3), 2).tolist()
-#     # for j in range(M - 1):
-#     #     b.append(1 / M - eps1)
-#     # b.append(1 / M + (M - 1) * eps1)
-#     B.append(b)
-b = (1,)*M
-#B = np.random.dirichlet(b,2).tolist()
-pi, A, B, arr_x = learn(N, M,v, A , B, pi, 10, c = True)
+observation1 = [x for x in observation2[0]]
 probs = {}
 for i in alphabet:
     probs[i] = [0,0]
-for j in range(len(observation)):
-    probs[observation[j]][arr_x[j]] +=1
+observations = []
+observation = observation1[:200]
+observations.append(observation.copy())
+observation = observation1[202:402]
+observations.append(observation.copy())
+observation = observation1[404:604]
+observations.append(observation.copy())
+observation = observation1[605:805]
+observations.append(observation.copy())
+observation = observation1[807:1007]
+observations.append(observation.copy())
+observation = observation1[1007:1207]
+observations.append(observation.copy())
+observation = observation1[1207:1407]
+observations.append(observation.copy())
+observation = observation1[1407:1607]
+observations.append(observation.copy())
+observation = observation1[1608:1808]
+observations.append(observation.copy())
+observation = observation1[1809:1909]
+observations.append(observation.copy())
+observation = observation1[1910:2110]
+observations.append(observation.copy())
+observation = observation1[2111:2311]
+observations.append(observation.copy())
+observation = observation1[2312:2512]
+observations.append(observation.copy())
+observation = observation1[2513:2713]
+observations.append(observation.copy())
+observation = observation1[2713:2913]
+observations.append(observation.copy())
+for obs in observations:
+    T = len(obs)
+    v = []
+    for i in obs:
+        v.append(alp_dict[i])
+    eps= 0.15
+    A = [[1 / N - eps, 1 / N + eps], [1 / N + eps, 1 / N - eps]]
+    # A = np.random.dirichlet((3,3), 2).tolist()
+    # pi = np.random.dirichlet((2,2), 1).tolist()
+
+    # A = [[0.5, 0.5], [0.5, 0.5]]
+    # pi = [0.5, 0.5]
+    M = len(alphabet)
+    eps1 = eps
+    pi = [1/N - eps1, 1/N +eps1]
+    B = []
+    for i in range(N):
+        b = []
+        for i in range(M):
+            b.append(1/M)
+        B.append(b)
+    alphabet = 'абвгґдеєжзиіїйклмнопрстуфхцчшщьюя '
+    alphabet = [x for x in alphabet]
+
+    eps1 = 0.01
+    # for i in range(N):
+    #     b = []
+    #     b = np.random.dirichlet((3, 3), 2).tolist()
+    #     # for j in range(M - 1):
+    #     #     b.append(1 / M - eps1)
+    #     # b.append(1 / M + (M - 1) * eps1)
+    #     B.append(b)
+    b = (1,)*M
+    #B = np.random.dirichlet(b,2).tolist()
+    pi, A, B, arr_x = learn(N, M,v, A , B, pi, 100, c = True)
+
+    for j in range(len(obs)):
+        probs[obs[j]][arr_x[j]] +=1
 print(probs)
 group1 = []
 group2 = []
@@ -298,8 +335,8 @@ print(group3)
 # pi = [0.6,0.2, 0.2]
 # v = [0, 2, 0, 2, 2, 1]
 #arr_x, _, _ = viterbi_st(np.array(A), np.array(pi), np.array(B), np.array(v))
-print(pi)
-print(A)
-print(B)
+# print(pi)
+# print(A)
+# print(B)
 
 # print(list(arr_x))
